@@ -12,7 +12,6 @@ provider "google" {
 
 module "network" {
   source = "git@github.com:ijsvogel/tf-modules.git//network/basic"
-  # source = "../modules/network/basic"
 
   vpcs = {
     "nw-dev-example" = {
