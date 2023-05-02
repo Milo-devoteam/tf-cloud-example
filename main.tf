@@ -2,22 +2,69 @@ locals {
   environment = "dev"
   region      = "europe-west4"
   zone        = "europe-west4-a"
+  project     = "pj-basic-tf-main"
 }
 
 provider "google" {
-  project = "pj-basic-tf-main"
-  region  = "europe-west1"
+  project = local.project
+  region  = local.region
 }
 
-resource "google_compute_network" "vpc_network" {
-  name = "terraform-cloud-network"
-}
+module "network" {
+  source = "git@github.com:ijsvogel/tf-modules.git//network/basic"
+  # source = "../modules/network/basic"
 
-resource "google_compute_subnetwork" "nl" {
-  ip_cidr_range = "10.0.1.0/24"
-  network       = google_compute_network.vpc_network.self_link
-  name          = "nwr-nl-dev"
-  region        = local.region
+  vpcs = {
+    "nw-dev-example" = {
+      project      = local.project
+      description  = "VPC Network for Ijsvogel prod"
+      routing_mode = "REGIONAL"
+      environment  = local.environment
+      name         = "example"
+
+      skip_default_deny_fw = true # Default deny all egress rule
+      subnets = {
+        "nwr-nl" = {
+          name                  = "nl"
+          region                = local.region
+          cidr_primary          = "10.0.0.0/24"
+          private_google_access = true
+          secondary_ranges      = {}
+        }
+      }
+    }
+  }
+  firewalls = {
+    "nw-dev-example" = {
+      project           = local.project
+      network           = "nw-dev-example"
+      ingress_allow_tag = {} # Used For internal communication (vm -> vm inside same VPC)
+      ingress_allow_range = {
+        "fw-allow-ssh-http" = {
+          description   = "Allow SSH from public to bastion"
+          source_ranges = ["0.0.0.0/0"]
+          priority      = 1000
+          target_tags   = []
+          protocols = {
+            "tcp" = ["22", "80"]
+          }
+        }
+      }
+      egress_allow_range = {
+        # Allow all internal networking
+        "fw-allow-all" = {
+          description        = "Allow egress for all"
+          destination_ranges = ["0.0.0.0/0"]
+          priority           = 997
+          target_tags        = []
+          protocols = {
+            "all" = []
+          }
+        }
+      }
+      egress_deny_range = {}
+    }
+  }
 }
 
 module "compute_instance" {
@@ -27,7 +74,7 @@ module "compute_instance" {
   num_instances       = 1
   hostname            = "web-server-vm"
   name_prefix         = "dev"
-  subnetwork          = google_compute_subnetwork.nl.self_link
+  subnetwork          = module.network.sub_networks["nw-dev-example"]["nwr-nl"].self_link
   region              = local.region
   zone                = local.zone
   deletion_protection = false
@@ -47,6 +94,10 @@ module "compute_instance" {
   }
 
   startup_script = <<EOF
-          apt install nginx
+          curl https://github.com/Milo-devoteam/whalesayer/releases/download/v0.1.0/whalesayer-amd64 -Lo /usr/local/bin/whalesayer
+          sudo chmod 755 /usr/local/bin/whalesayer
+          export COW_PATH=/usr/share/cowsay/cows
+          export PORT=8080
+          whalesayer
           EOF
 }
