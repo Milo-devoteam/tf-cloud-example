@@ -45,7 +45,7 @@ module "network" {
           priority      = 1000
           target_tags   = []
           protocols = {
-            "tcp" = ["22", "80"]
+            "tcp" = ["22", "80", "8080"]
           }
         }
       }
@@ -93,8 +93,9 @@ module "compute_instance" {
   }
 
   startup_script = <<EOF
-          sudo curl https://github.com/Milo-devoteam/whalesayer/releases/download/v0.1.0/whalesayer-amd64 -Lo /usr/local/bin/whalesayer
-          sudo chmod 755 /usr/local/bin/whalesayer
+          curl https://github.com/Milo-devoteam/whalesayer/releases/download/v0.1.0/whalesayer-amd64 -Lo /usr/local/bin/whalesayer
+          apt update && apt install cowsay
+          chmod 755 /usr/local/bin/whalesayer
           export COW_PATH=/usr/share/cowsay/cows
           export PORT=8080
           whalesayer
