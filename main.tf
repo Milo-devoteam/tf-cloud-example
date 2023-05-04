@@ -39,7 +39,7 @@ module "network" {
       network           = "nw-dev-example"
       ingress_allow_tag = {} # Used For internal communication (vm -> vm inside same VPC)
       ingress_allow_range = {
-        "fw-allow-ssh-http" = {
+        "allow-ssh-http" = {
           description   = "Allow SSH from public to bastion"
           source_ranges = ["0.0.0.0/0"]
           priority      = 1000
@@ -51,10 +51,10 @@ module "network" {
       }
       egress_allow_range = {
         # Allow all internal networking
-        "fw-allow-all" = {
-          description        = "Allow egress for all"
+        "allow-all" = {
+          description        = "Allow all egress"
           destination_ranges = ["0.0.0.0/0"]
-          priority           = 997
+          priority           = 1000
           target_tags        = []
           protocols = {
             "all" = []
@@ -93,7 +93,7 @@ module "compute_instance" {
   }
 
   startup_script = <<EOF
-          curl https://github.com/Milo-devoteam/whalesayer/releases/download/v0.1.0/whalesayer-amd64 -Lo /usr/local/bin/whalesayer
+          sudo curl https://github.com/Milo-devoteam/whalesayer/releases/download/v0.1.0/whalesayer-amd64 -Lo /usr/local/bin/whalesayer
           sudo chmod 755 /usr/local/bin/whalesayer
           export COW_PATH=/usr/share/cowsay/cows
           export PORT=8080
